@@ -3,7 +3,7 @@
 As a Java developer working on **TypeScript + Express.js** projects, I ever miss the Spring annotations used in Spring
 Controllers. *Transactional* and *RequestMapping* used to be my favorites. Each Java controller I code use to have at
 least one of them. So, when I had to work with Express.js and TypeScript, it became a big issue for me, mainly in
-complexes controllers which the focus is on the business rules and open the possibility of forgetting the
+complex controllers which the focus is on the business rules and open the possibility of forgetting the
 database connection cycle management.
 
 Transactions are a professional way to manage database operations during some code execution, especially in the complex
@@ -91,7 +91,7 @@ Now your MongoDB is running using a replica set containing just one node (and it
 
 Our environment is configured to use decorated Express.js routes, a different way in each route is a method of a
 class (known as Controller). Teach this is not the objective of this tutorial but, if you don't have your code
-configurated as this way, you can copy the content of the [decorators folder]() on this project repository on GitHub or
+configurated as this way, you can copy the content of the [decorators folder](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/tree/master/src/controllers/decorators) on this project repository on GitHub or
 follow
 this [tutorial](https://medium.com/globant/expressjs-routing-with-decorators-dependency-injection-and-reflect-metadata-945f92e15a06).
 
@@ -121,7 +121,7 @@ export class AccountController {
 }
 ```
 
-In addition, you must have installed *express*, *reflect-metadata* and *mongoose*. Take a look at the [package.json]()
+In addition, you must have installed *express*, *reflect-metadata* and *mongoose*. Take a look at the [package.json](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/package.json)
 of my example project to view the libraries' versions I've used. <br>
 Don't forget to enable the *experimentalDecorators*, *emitDecoratorMetadata* and *sourceMap*, marking them as **true**
 on **tsconfig.json**. The first will enable the use of decorators (essential for this tutorial), the second will enable
@@ -133,7 +133,7 @@ while Express.js is running (it creates a map pointing the JavaScript compiled c
 In this tutorial we will use Mongoose as our ODM (Object Document Mappers) that will be responsible to manage the
 transactions. Other packages can be used applying some adaptations.<br>
 At this point, I will suppose you have knowledge about the use of Mongoose ODM, but, any doubts about its configuration
-you can consult the [repository]() on GitHub.<br>
+you can consult the [repository](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/) on GitHub.<br>
 Now, returning to our subject, the Transactional decorator must:
 
 1. Start a session
@@ -188,6 +188,11 @@ export function MongooseTransactional(): MethodDecorator {
                         // Abort the transaction (Step 3.2)
                         await session.abortTransaction();
                         console.log("Transaction aborted");
+
+                        // Send a response with error if another one have not been sent
+                        if(!args[1].writableFinished) {
+                            args[1].status(500).send("An error occurred!")
+                        }
                     } finally {
                         // Close the session (Step 4)
                         await session.endSession();
@@ -201,13 +206,17 @@ export function MongooseTransactional(): MethodDecorator {
                 // Abort the transaction (Step 3.2)
                 await session.abortTransaction();
                 console.log("Transaction aborted");
+
+                // Send a response with error if another one have not been sent
+                if(!args[1].writableFinished) {
+                    args[1].status(500).send("An error occurred!")
+                }
             } finally {
                 // This block will be executed only if the method is synchronous
                 if (!isAsyncMethod) {
                     // Close the session (Step 4)
                     await session.endSession();
                     console.log("[Sync] Session finished.");
-                    args[1].status(500).send("An error occurred!")
                 }
             }
         }
@@ -216,3 +225,26 @@ export function MongooseTransactional(): MethodDecorator {
     }
 }
 ```
+
+The most important part of this decorator is the *session* injection as the third parameter of the decorated method. It
+will allow Mongoose operations (like *save*, *update*, *create* etc.) that receive a *session* as parameter to be able
+to receive the *session* created inside the **MongooseTransactional** decorator.
+
+The second most import part is to identify what kind of method we are decorating. When we use TypeScript decorators, we
+have to be careful to handle sync and async methods. As async method always will return a response (a Promise)
+independently if the code has throw an error or not, we have to identify what kind of method we are decorating before
+apply the correct treatment. In the example above, second *finally* block has analyzed if the method is synchronous or
+not before finish the session. Case it was not done, in asynchronous methods, the session could be finished before it
+treatment in the respective part of the decorator.
+
+The third and last important part is to identify if another response has been sent before the response coming from the
+MongooseTransactional decorator. Here I used the *writableFinished* method to verify if the response could be written
+or not. It's prudent use this solution when you decorate methods with many decorators (in my 
+[project](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/) the 
+[**MongooseTransactional**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/mongoose/MongooseTransactional.ts) 
+and [**Routes**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/Routes.ts) can be an example of this) and one of then responds the request
+before another, avoiding an application crash.
+
+## 4) Applying the Transactional decorator
+
+Returning to our bank application example, 

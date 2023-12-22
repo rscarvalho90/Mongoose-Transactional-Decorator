@@ -40,6 +40,11 @@ export function MongooseTransactional(): MethodDecorator {
                         // Abort the transaction (Step 3.2)
                         await session.abortTransaction();
                         console.log("Transaction aborted");
+
+                        // Send a response with error if another one have not being sent
+                        if(!args[1].writableFinished) {
+                            args[1].status(500).send("An error occurred!")
+                        }
                     } finally {
                         // Close the session (Step 4)
                         await session.endSession();
@@ -53,13 +58,17 @@ export function MongooseTransactional(): MethodDecorator {
                 // Abort the transaction (Step 3.2)
                 await session.abortTransaction();
                 console.log("Transaction aborted");
+
+                // Send a response with error if another one have not being sent
+                if(!args[1].writableFinished) {
+                    args[1].status(500).send("An error occurred!")
+                }
             } finally {
                 // This block will be executed only if the method is synchronous
                 if (!isAsyncMethod) {
                     // Close the session (Step 4)
                     await session.endSession();
                     console.log("[Sync] Session finished.");
-                    args[1].status(500).send("An error occurred!")
                 }
             }
         }
