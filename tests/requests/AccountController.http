@@ -1,0 +1,23 @@
+### Do a sync account transfer
+# @no-log
+
+
+POST http://localhost:8080/account/transfer
+Content-Type: application/json
+
+{
+  "origin_account_number": 54545488,
+  "destination_account_number": 2845645,
+  "amount": 100
+}
+
+###
+
+POST http://localhost:8080/account/transactional_transfer
+Content-Type: application/json
+
+{
+  "origin_account_number": 54545488,
+  "destination_account_number": 2845645,
+  "amount": 100
+}
