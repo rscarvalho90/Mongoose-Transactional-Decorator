@@ -244,10 +244,8 @@ The third and last important part is to identify if another response has been se
 MongooseTransactional decorator. Here I used the *writableFinished* method to verify if the response could be written
 or not. It's prudent use this solution when you decorate methods with many decorators (in my
 [project](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/) the
-[**MongooseTransactional
-**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/mongoose/MongooseTransactional.ts)
-and [**Routes
-**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/Routes.ts)
+[**MongooseTransactional**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/mongoose/MongooseTransactional.ts)
+and [**Routes**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/Routes.ts)
 can be an example of this) and one of then responds the request
 before another, avoiding an application crash.
 
