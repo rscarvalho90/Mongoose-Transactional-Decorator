@@ -1,6 +1,6 @@
 # Transactional Mongoose controllers in TypeScript + Express.js + MongoDB using decorators
 
-As a Java developer working on **TypeScript + Express.js** projects, I ever miss the Spring annotations used in Spring
+As a Java developer nowadays working on **TypeScript + Express.js** projects, I ever miss the Spring annotations used in Spring
 Controllers. *Transactional* and *RequestMapping* used to be my favorites. Each Java controller I code use to have at
 least one of them. So, when I had to work with Express.js and TypeScript, it became a big issue for me, mainly in
 complex controllers which the focus is on the business rules and open the possibility of forgetting the
@@ -8,32 +8,32 @@ database connection cycle management.
 
 Transactions are a professional way to manage database operations during some code execution, especially in the complex
 ones. For example, imagine you're developing a software for a bank which you have to transfer money between two
-accounts. Then you draw the money from Account "A" and deposit it in the Account "B". It appears simple, but imagine
+accounts. Then you draw the money from Account "A" and deposit it in the Account "B". It appears to be simple, but imagine
 that the account B is blocked for some reason, so you have to manually redeposit the money for the Account "A".
 Looking this action in the database side you would have (if the database was a SQL one) to do an UPDATE operation on
 Account "A", removing the amount of money, verify the Account "B" with a SELECT state and assure that the account is not
 blocked and, verifying that it is blocked, do another UPDATE in Account "A" and give back the money. If you use
-Transactions, you just have to throw an error when you verify that the account is block and the transaction
+Transactions, you just have to throw an error when you verify that the account is blocked and the transaction
 automatically will undo transparently the database operations (create, update or delete) you have performed until that.
 
-**P.S.** It was just a simple example. Banking operations are more complex than this, involving verifying bank balance,
-registering transactions history etc.
+**P.S.** It was just a simple example. Banking operations are more complex than this, involving verifying both account balances
+and status before make the transaction, registering transactions history etc.
 
 So, in this tutorial you will learn how to create a custom *decorator* (that is a "second cousin" of Java annotations)
-that will provide a transaction management, allowing you to spend your time in what really imports: a quality and
-functional software that attends its purposes. <br>
+that will provide a transaction management, allowing you to spend your time in what really imports: develop quality and
+functional software that attends their purposes. <br>
 
 ## 1) Configuring MongoDB
 
 By default, MongoDB is configured in standalone mode, which not allows the use of transactions. To unlock this feature,
-**you need to configure the server as a *replica set***. In my example, I will show how to configure the server as a *
-*one node replica set*.<br>
+**you need to configure the server as a *replica set***. In my example, I will show how to configure the server as a 
+**one node replica set**.<br>
 The easiest way to configure the server as a replica set is creating a new *mongod.cfg* file. The file bellow is the
 simplest one that will allow you to create the one node replica set we will need. Don't forget to change the values of
-the fields *dbPath*, *path* and *replSetName* fields, the first two can vary depending on OS and the directory where
+*dbPath*, *path* and *replSetName* fields, the first two can vary depending on OS and the directory where
 MongoDB is installed.
 
-```` mongod.conf for replica set use
+```
 # mongod.conf
 
 # for documentation of all options, see:
@@ -68,7 +68,7 @@ replication:
 ## Enterprise-Only Options:
 
 #auditLog:
-````
+```
 
 The only difference between it and the default one is the replication parameter:
 
@@ -91,13 +91,13 @@ Now your MongoDB is running using a replica set containing just one node (and it
 
 Our environment is configured to use decorated Express.js routes, a different way in each route is a method of a
 class (known as Controller). Teach this is not the objective of this tutorial but, if you don't have your code
-configurated as this way, you can copy the content of
+configured as this way, you can copy the content of
 the [decorators folder](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/tree/master/src/controllers/decorators)
 on this project repository on GitHub or
 follow
 this [tutorial](https://medium.com/globant/expressjs-routing-with-decorators-dependency-injection-and-reflect-metadata-945f92e15a06).
 
-In resume, you must have your controller looking like this:
+In resume, at this moment, you must have your controller looking like this:
 
 ```
 import {Request, Response} from "express";
@@ -135,7 +135,7 @@ while Express.js is running (it creates a map pointing the JavaScript compiled c
 
 In this tutorial we will use Mongoose as our ODM (Object Document Mappers) that will be responsible to manage the
 transactions. Other packages can be used applying some adaptations.<br>
-At this point, I will suppose you have knowledge about the use of Mongoose ODM, but, any doubts about its configuration
+At this point, I will suppose you have knowledge about the use of Mongoose ODM but, any doubts about its configuration
 you can consult the [repository](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/) on GitHub.<br>
 Now, returning to our subject, the Transactional decorator must:
 
@@ -236,8 +236,8 @@ to receive the *session* created inside the **MongooseTransactional** decorator.
 The second most import part is to identify what kind of method we are decorating. When we use TypeScript decorators, we
 have to be careful to handle sync and async methods. As async method always will return a response (a Promise)
 independently if the code has throw an error or not, we have to identify what kind of method we are decorating before
-apply the correct treatment. In the example above, second *finally* block has analyzed if the method is synchronous or
-not before finish the session. Case it was not done, in asynchronous methods, the session could be finished before it
+apply the correct treatment. In the example above, the second *finally* block has analyzed if the method is synchronous or
+asynchronous before finish the session. Case it was not done, in asynchronous methods, the session could be finished before it
 treatment in the respective part of the decorator.
 
 The third and last important part is to identify if another response has been sent before the response coming from the
@@ -246,17 +246,16 @@ or not. It's prudent use this solution when you decorate methods with many decor
 [project](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/) the
 [**MongooseTransactional**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/mongoose/MongooseTransactional.ts)
 and [**Routes**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/Routes.ts)
-can be an example of this) and one of then responds the request
-before another, avoiding an application crash.
+can be an example of this) and one of then responds the request before another, avoiding an application crash.
 
 ## 4) Applying the Transactional decorator
 
 ### 4.1) Decorating the route method
 
-Returning to our bank application example, lets apply the decorator to a controller. To do this, you must:
+Returning to our bank application example, let's apply the decorator to a controller. To do this, you must:
 
-1) Add the **@MongooseTransactional** annotation before the route;
-2) Add the **ClientSession** that will be injected by the decorator;
+1) Add the **@MongooseTransactional** annotation before the route method;
+2) Add the **ClientSession** as a route method parameter, which will be injected by the decorator;
 3) Convert the method to asynchronous one, as it will be converted inside the decorator.
 
 Our route method, before executing Mongoose operations, will be like this below:
@@ -306,10 +305,10 @@ await ModelName.create([
 Don't forget, when you use the *session* as parameter, to put the document object inside brackets. Otherwise, the
 transactional operation may not work.
 In update and delete operations, if you get the object using *find* methods with *session* informed, you don't have
-to use the *session* after, in the moment of effectively run the transactional operation:
+to use the *session* again, in the moment of effectively run the transactional operation:
 
 ```
-entity = await ModelName.find(["model_attribute_name1": model_attribute1_value]).session(session);
+entity = await ModelName.find({"model_attribute_name1": model_attribute1_value}).session(session);
 entity.model_attribute_name2 = "newAttribute2Value";
 await entity.save();
 ```
@@ -327,14 +326,9 @@ Using the bank operation as example, our route method will be written as below:
  @Post("/transfer")
  @MongooseTransactional()
  async transferFundsTo(req: Request, res: Response, session: ClientSession): Promise<void> {
-     // Business Rules
-    let originAccount;
-
-    if (session)
-        originAccount = await Account.find({"account_number": req.body.origin_account_number}).session(session);
-    else
-        originAccount = await Account.find({"account_number": req.body.origin_account_number});
-
+    // Business Rules
+    const originAccount = await Account.find({"account_number": req.body.origin_account_number}).session(session);
+    
     if (originAccount.length === 1) { // Account found
         if (!originAccount[0].is_blocked) {
             // Origin account has enough balance
@@ -346,12 +340,7 @@ Using the bank operation as example, our route method will be written as below:
                         use the associated session */
                 await originAccount[0].save();
 
-                let destAccount;
-
-                if (session)
-                    destAccount = await Account.find({"account_number": req.body.destination_account_number}).session(session);
-                else
-                    destAccount = await Account.find({"account_number": req.body.destination_account_number});
+                const destAccount = await Account.find({"account_number": req.body.destination_account_number}).session(session);
 
                 if (destAccount.length === 1) {
                     if (!destAccount[0].is_blocked) {
@@ -392,25 +381,25 @@ Using the bank operation as example, our route method will be written as below:
  }
 ```
 
-In the example above, an error was thrown after a blocked destination account was found, but is more common errors
-be found inside method execution, like malformed integrations.
+In the example above, an error was designedly thrown after a blocked destination account was found, but is more common errors
+be found inside method execution, like malformed integrations or nested operations inside other functions or methods.
 
 ## 5) Testing the decorator functionality
 
 In the
 [Test File](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/tests/MoongoseTransactional.test.ts)
-we can analyze the method behavior of the decorated and non-decorated route method.
+we can analyze the methods behavior of the decorated and non-decorated route methods.
 
-In the "Transfer with destination account blocked [with transaction abort (roll back database)" test, $100 was drawn
+In the **"Transfer with destination account blocked [with transaction abort (roll back database)"** test, $100 was drawn
 from origin account and, when the error has occurred, the transaction rolled back to the initial state, returning the
 origin account balance to the initial state ($1000).
 
-In the "Transfer with destination account blocked [without transaction abort (not roll back database)]" test, we can
+In the **"Transfer with destination account blocked [without transaction abort (not roll back database)]**, we can
 see a bad code piece, where an error was thrown, but the absence of transaction cause a database failure, removing
-$100 of the origin account and not returning the original account balance not even transfer it to destination account.
+$100 of the origin account and not returning it to the original account balance not even transfer it to destination account.
 It could be a serious problem for a financial institution, even causing intervention of regulation organisms.
 
-In the "Transfer with destination account not blocked", the account's balances was rolled back to the initial state
+In the **"Transfer with destination account not blocked"**, the account's balances was rolled back to the initial state
 ($1000) and the destination account was unblocked. Now the transfer occurred perfectly, removing $100 from origin
 account and deposited on the destination account.
 
@@ -478,7 +467,8 @@ describe("Mongoose Transactional", () => {
 
 ## 6) Conclusion
 
-Using this decorator can turn the developer work easier when using database operations. This decorator can be
+Using this decorator can turn the developer work easier and safer when using database operations. This decorator can be
 resumed as a way to surround a route method with a try/catch block and treat the exceptions using transaction management
-(committing or aborting it and closing the session). It is not easier than the Spring @Transactional decorator in Java,
-but, considering the maturity of TypeScript, it is a great advance for Node.js when programming NoSQL database operations.
+(committing or aborting it and finally closing the session). It is not easier than the Spring @Transactional decorator in Java,
+but, considering the maturity of TypeScript as a newer programming language, it is a great advance for Node.js when 
+we are working with NoSQL database operations.
