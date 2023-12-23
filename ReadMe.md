@@ -26,7 +26,7 @@ functional software that attends their purposes.
 ## 1) Configuring MongoDB
 
 By default, MongoDB is configured in standalone mode, which not allows the use of transactions. To unlock this feature,
-**you need to configure the server as a *replica set***. In my example, I will show how to configure the server as a 
+**you need to configure the server as a *replica set***. In my example, I will show how to configure the server as a
 **one node replica set**.
 
 The easiest way to configure the server as a replica set is creating a new *mongod.cfg* file. The file bellow is the
@@ -145,7 +145,7 @@ Now, returning to our subject, the Transactional decorator must:
 
 1. Start a session;
 2. Open a transaction;
-3. Commit or abort the transaction; 
+3. Commit or abort the transaction;
 
    3.1. Commit the transaction if everything went well;
 
@@ -476,7 +476,7 @@ describe("Mongoose Transactional", () => {
 Using this decorator can turn the developer work easier and safer when using database operations. This decorator can be
 resumed as a way to surround a route method with a try/catch block and treat the exceptions using transaction management
 (committing or aborting it and finally closing the session). It is not easier than the Spring @Transactional decorator in Java,
-but, considering the maturity of TypeScript as a newer programming language, it is a great advance for Node.js when 
+but, considering the maturity of TypeScript as a newer programming language, it is a great advance for Node.js when
 we are working with NoSQL database operations.
 <br>
 <br>
