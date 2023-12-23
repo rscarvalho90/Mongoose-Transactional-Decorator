@@ -91,7 +91,9 @@ Now your MongoDB is running using a replica set containing just one node (and it
 
 Our environment is configured to use decorated Express.js routes, a different way in each route is a method of a
 class (known as Controller). Teach this is not the objective of this tutorial but, if you don't have your code
-configurated as this way, you can copy the content of the [decorators folder](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/tree/master/src/controllers/decorators) on this project repository on GitHub or
+configurated as this way, you can copy the content of
+the [decorators folder](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/tree/master/src/controllers/decorators)
+on this project repository on GitHub or
 follow
 this [tutorial](https://medium.com/globant/expressjs-routing-with-decorators-dependency-injection-and-reflect-metadata-945f92e15a06).
 
@@ -121,7 +123,8 @@ export class AccountController {
 }
 ```
 
-In addition, you must have installed *express*, *reflect-metadata* and *mongoose*. Take a look at the [package.json](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/package.json)
+In addition, you must have installed *express*, *reflect-metadata* and *mongoose*. Take a look at
+the [package.json](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/package.json)
 of my example project to view the libraries' versions I've used. <br>
 Don't forget to enable the *experimentalDecorators*, *emitDecoratorMetadata* and *sourceMap*, marking them as **true**
 on **tsconfig.json**. The first will enable the use of decorators (essential for this tutorial), the second will enable
@@ -136,12 +139,12 @@ At this point, I will suppose you have knowledge about the use of Mongoose ODM, 
 you can consult the [repository](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/) on GitHub.<br>
 Now, returning to our subject, the Transactional decorator must:
 
-1. Start a session
-2. Open a transaction
-3. Commit or abort the transaction <br>
-   3.1. Commit the transaction if everything went well <br>
-   3.2. Abort the transaction if some error has been thrown
-4. Close the session
+1. Start a session;
+2. Open a transaction;
+3. Commit or abort the transaction; <br>
+   3.1. Commit the transaction if everything went well; <br>
+   3.2. Abort the transaction if some error has been thrown;
+4. Close the session.
 
 So, we can write the Transactional decorator in this way:
 
@@ -239,12 +242,245 @@ treatment in the respective part of the decorator.
 
 The third and last important part is to identify if another response has been sent before the response coming from the
 MongooseTransactional decorator. Here I used the *writableFinished* method to verify if the response could be written
-or not. It's prudent use this solution when you decorate methods with many decorators (in my 
-[project](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/) the 
-[**MongooseTransactional**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/mongoose/MongooseTransactional.ts) 
-and [**Routes**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/Routes.ts) can be an example of this) and one of then responds the request
+or not. It's prudent use this solution when you decorate methods with many decorators (in my
+[project](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/) the
+[**MongooseTransactional
+**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/mongoose/MongooseTransactional.ts)
+and [**Routes
+**](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/src/controllers/decorators/Routes.ts)
+can be an example of this) and one of then responds the request
 before another, avoiding an application crash.
 
 ## 4) Applying the Transactional decorator
 
-Returning to our bank application example, 
+### 4.1) Decorating the route method
+
+Returning to our bank application example, lets apply the decorator to a controller. To do this, you must:
+
+1) Add the **@MongooseTransactional** annotation before the route;
+2) Add the **ClientSession** that will be injected by the decorator;
+3) Convert the method to asynchronous one, as it will be converted inside the decorator.
+
+Our route method, before executing Mongoose operations, will be like this below:
+
+```
+import {Request, Response} from "express";
+import {Controller, Post} from "./decorators";
+import {ClientSession} from "mongoose";
+
+@Controller("/account")
+export class AccountController {
+
+    /**
+     * Transfer funds from this account to another.
+     *
+     * @param req - HTTP Request (injected by Express.js)
+     * @param res - HTTP Response (injected by Express.js)
+     * @param session - Mongoose ClientSession (injected by MongooseTransactional decorator)
+     */
+    @Post("/transfer")
+    @MongooseTransactional
+    async transferFundsTo(req: Request, res: Response, session: ClientSession): void {
+        // Controller operations
+
+        const ourResponse = "Ammount tranfered!"
+
+        res.status(200).send(ourResponse);
+    }
+}
+```
+
+### 4.2) Using the injected *session* in Mongoose operations
+
+After decorate the method, we have to use the injected *session* inside Mongoose operations like *save*, *update*,
+*create* etc. To do this, just inform the *session* as parameter of the operations methods, like this, where ModelName
+can be any model for your document collection:
+
+```
+await ModelName.create([
+         {
+            "model_attribute_name1": model_attribute1_value, 
+            "model_attribute_name2": model_attribute2_value
+         }
+      ], {session});
+```
+
+Don't forget, when you use the *session* as parameter, to put the document object inside brackets. Otherwise, the
+transactional operation may not work.
+In update and delete operations, if you get the object using *find* methods with *session* informed, you don't have
+to use the *session* after, in the moment of effectively run the transactional operation:
+
+```
+entity = await ModelName.find(["model_attribute_name1": model_attribute1_value]).session(session);
+entity.model_attribute_name2 = "newAttribute2Value";
+await entity.save();
+```
+
+Using the bank operation as example, our route method will be written as below:
+
+```
+ /**
+  * Transfer funds from this account to another one.
+  *
+  * @param req - HTTP Request (injected by Express.js)
+  * @param res - HTTP Response (injected by Express.js)
+  * @param session - Mongoose ClientSession (injected by MongooseTransactional decorator)
+  */
+ @Post("/transfer")
+ @MongooseTransactional()
+ async transferFundsTo(req: Request, res: Response, session: ClientSession): Promise<void> {
+     // Business Rules
+    let originAccount;
+
+    if (session)
+        originAccount = await Account.find({"account_number": req.body.origin_account_number}).session(session);
+    else
+        originAccount = await Account.find({"account_number": req.body.origin_account_number});
+
+    if (originAccount.length === 1) { // Account found
+        if (!originAccount[0].is_blocked) {
+            // Origin account has enough balance
+            if (originAccount[0].account_balance > req.body.amount) {
+                // Update the origin account balance before transfer to the destination account
+                originAccount[0].account_balance = originAccount[0].account_balance - req.body.amount;
+
+                /* As originAccount[0] was found with a session (in transactional decorated methods), save will
+                        use the associated session */
+                await originAccount[0].save();
+
+                let destAccount;
+
+                if (session)
+                    destAccount = await Account.find({"account_number": req.body.destination_account_number}).session(session);
+                else
+                    destAccount = await Account.find({"account_number": req.body.destination_account_number});
+
+                if (destAccount.length === 1) {
+                    if (!destAccount[0].is_blocked) {
+                        destAccount[0].account_balance = destAccount[0].account_balance + req.body.amount;
+
+                        /* As destAccount[0] was found with a session (in transactional decorated methods), save will
+                        use the associated session */
+                        await destAccount[0].save();
+
+                        res.status(200).send("Transfer realized!");
+                        return;
+                    } else {
+                        res.status(400).send("Destination account is blocked!");
+                        throw new Error("Destination account is blocked!");
+                    }
+                } else if (destAccount.length === 0) { // Destination account not found
+                    res.status(404).send("Destination account not found!");
+                    return;
+                } else { // More than one destination account found
+                    res.status(500).send("Internal error!");
+                    return;
+                }
+            } else {
+                res.status(400).send("Not enough origin account balance!");
+                return;
+            }
+        } else { // Origin account is blocked
+            res.status(400).send("Origin account is blocked!");
+            return;
+        }
+    } else if (originAccount.length === 0) { // Origin account not found
+        res.status(404).send("Origin account not found!");
+        return;
+    } else { // More than one origin account found
+        res.status(500).send("Internal error!");
+        return;
+    }
+ }
+```
+
+In the example above, an error was thrown after a blocked destination account was found, but is more common errors
+be found inside method execution, like malformed integrations.
+
+## 5) Testing the decorator functionality
+
+In the
+[Test File](https://github.com/rscarvalho90/Mongoose-Transactional-Decorator/blob/master/tests/MoongoseTransactional.test.ts)
+we can analyze the method behavior of the decorated and non-decorated route method.
+
+In the "Transfer with destination account blocked [with transaction abort (roll back database)" test, $100 was drawn
+from origin account and, when the error has occurred, the transaction rolled back to the initial state, returning the
+origin account balance to the initial state ($1000).
+
+In the "Transfer with destination account blocked [without transaction abort (not roll back database)]" test, we can
+see a bad code piece, where an error was thrown, but the absence of transaction cause a database failure, removing
+$100 of the origin account and not returning the original account balance not even transfer it to destination account.
+It could be a serious problem for a financial institution, even causing intervention of regulation organisms.
+
+In the "Transfer with destination account not blocked", the account's balances was rolled back to the initial state
+($1000) and the destination account was unblocked. Now the transfer occurred perfectly, removing $100 from origin
+account and deposited on the destination account.
+
+```
+describe("Mongoose Transactional", () => {
+    test("Create initial state", async () => {
+        await cleanAccounts();
+        await createInitialAccountState();
+    })
+
+    test("Transfer with destination account blocked [with transaction abort (roll back database)]", async () => {
+        const response = await axios.post("http://localhost:8080/account/transactional_transfer", {
+            "origin_account_number": 54545488,
+            "destination_account_number": 2845645,
+            "amount": 100
+        }).catch(err => err);
+
+        expect(response.response.data).toEqual("Destination account is blocked!");
+
+        const originAccount = await Account.find({account_number: 54545488});
+        const destinationAccount = await Account.find({account_number: 2845645});
+
+        expect(originAccount[0].account_balance).toEqual(1000);
+        expect(destinationAccount[0].account_balance).toEqual(1000);
+    });
+
+    test("Transfer with destination account blocked [without transaction abort (not roll back database)]", async () => {
+        const response = await axios.post("http://localhost:8080/account/not_transactional_transfer", {
+            "origin_account_number": 54545488,
+            "destination_account_number": 2845645,
+            "amount": 100
+        }).catch(err => err);
+
+        expect(response.response.data).toEqual("Destination account is blocked!");
+
+        const originAccount = await Account.find({account_number: 54545488});
+        const destinationAccount = await Account.find({account_number: 2845645});
+
+        expect(originAccount[0].account_balance).toEqual(900);
+        expect(destinationAccount[0].account_balance).toEqual(1000);
+    });
+
+    test("Transfer with destination account not blocked", async () => {
+        await Account.updateOne({account_number: 2845645}, {account_balance: 1000, is_blocked: false});
+        await Account.updateOne({account_number: 54545488}, {account_balance: 1000});
+
+        const response = await axios.post("http://localhost:8080/account/transactional_transfer", {
+            "origin_account_number": 54545488,
+            "destination_account_number": 2845645,
+            "amount": 100
+        }).catch(err => err);
+
+        expect(response.data).toEqual("Transfer realized!");
+
+        const originAccount = await Account.find({account_number: 54545488});
+        const destinationAccount = await Account.find({account_number: 2845645});
+
+        expect(originAccount[0].account_balance).toEqual(900);
+        expect(destinationAccount[0].account_balance).toEqual(1100);
+
+        await cleanAccounts();
+    });
+})
+```
+
+## 6) Conclusion
+
+Using this decorator can turn the developer work easier when using database operations. This decorator can be
+resumed as a way to surround a route method with a try/catch block and treat the exceptions using transaction management
+(committing or aborting it and closing the session). It is not easier than the Spring @Transactional decorator in Java,
+but, considering the maturity of TypeScript, it is a great advance for Node.js when programming NoSQL database operations.

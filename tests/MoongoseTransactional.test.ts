@@ -1,5 +1,4 @@
 import axios from "axios";
-import mongoose, {Schema} from "mongoose";
 import {db} from "../src/dbConfig";
 import {Account} from "../src/model/schemas/Account";
 

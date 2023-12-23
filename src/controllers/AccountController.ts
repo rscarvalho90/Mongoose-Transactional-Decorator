@@ -10,9 +10,9 @@ export class AccountController {
     /**
      * Transfer funds from this account to another one.
      *
-     * @param req - HTTP Request (injected)
-     * @param res - HTTP Response (injected)
-     * @param session - Mongoose ClientSession (injected)
+     * @param req - HTTP Request (injected by Express.js)
+     * @param res - HTTP Response (injected by Express.js)
+     * @param session - Mongoose ClientSession (injected by MongooseTransactional decorator)
      */
     @Post("/transactional_transfer")
     @MongooseTransactional()
@@ -20,17 +20,30 @@ export class AccountController {
         await transferFunds(req, res, session);
     }
 
+    /**
+     * Transfer funds from this account to another one.
+     *
+     * @param req - HTTP Request (injected by Express.js)
+     * @param res - HTTP Response (injected by Express.js)
+     */
     @Post("/not_transactional_transfer")
     async notTransactionalTransferFundsTo(req: Request, res: Response): Promise<void> {
         await transferFunds(req, res);
     }
 }
 
+/**
+ * Transfer funds from this account to another one.
+ *
+ * @param req - HTTP Request
+ * @param res - HTTP Response
+ * @param session - Mongoose ClientSession
+ */
 async function transferFunds(req: Request, res: Response, session?: ClientSession) {
     // Business Rules
     let originAccount;
 
-    if(session)
+    if (session)
         originAccount = await Account.find({"account_number": req.body.origin_account_number}).session(session);
     else
         originAccount = await Account.find({"account_number": req.body.origin_account_number});
@@ -48,7 +61,7 @@ async function transferFunds(req: Request, res: Response, session?: ClientSessio
 
                 let destAccount;
 
-                if(session)
+                if (session)
                     destAccount = await Account.find({"account_number": req.body.destination_account_number}).session(session);
                 else
                     destAccount = await Account.find({"account_number": req.body.destination_account_number});
